@@ -18,8 +18,8 @@ class Whens(commands.Cog):
         self.active_sessions = {}
 
     @commands.command(name="whens")
-    async def whens_command(self, ctx, slots: int):
-        """Start a whens session with a given number of slots."""
+    async def whens_command(self, ctx, slots: int, *, game: str):
+        """Start a whens session with a given number of slots and a game name."""
         if slots < 1:
             return await ctx.send("Slots must be at least 1.")
 
@@ -29,6 +29,7 @@ class Whens(commands.Cog):
 
         # build embed description with expiry line
         desc = (
+            f"🎮 **Game:** {game}\n\n"
             "Please check in for gaming!\n"
             "React to this message to consent to gaming!\n\n"
             f"Slots available: {slots}\n\n"
@@ -53,7 +54,8 @@ class Whens(commands.Cog):
             "participants": [],  # list of (user, join_timestamp)
             "expires": expires,
             "channel": ctx.channel.id,
-            "owner": ctx.author.id
+            "owner": ctx.author.id,
+            "game": game
         }
 
         # schedule expiry task
@@ -83,7 +85,7 @@ class Whens(commands.Cog):
             session["participants"].append((user, unix_now()))
 
             filled = [
-                f"{i+1}. {p.display_name} (<t:{ts}:R>)"
+                f"{i+1}. <@{p.id}> (<t:{ts}:R>)"
                 for i, (p, ts) in enumerate(session["participants"])
             ]
             empty = [f"{i+1}. [empty]" for i in range(len(session["participants"]), session["slots"])]
@@ -91,6 +93,7 @@ class Whens(commands.Cog):
             expiry_unix = int(session["expires"].timestamp())
 
             desc = (
+                f"🎮 **Game:** {session['game']}\n\n"
                 "Please check in for gaming!\n"
                 "React to this message to consent to gaming!\n\n"
                 f"Slots available: {session['slots']}\n\n"
