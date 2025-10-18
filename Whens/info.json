@@ -1,0 +1,7 @@
+{
+  "author": ["Sobudd"],
+  "install_msg": "Thanks for installing Whens!",
+  "name": "Whens",
+  "short": "Track and respond to 'when' events.",
+  "description": "A starter cog called Whens, ready for expansion."
+}
