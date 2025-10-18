@@ -62,7 +62,7 @@ class Whens(commands.Cog):
         # Update embed
         embed = msg.embeds[0]
         filled = [
-            f"{i+1}. {p.display_name} ({datetime.utcnow().strftime('%H:%M:%S UTC')})"
+            f"{i+1}. {p.display_name} (<t:{int(datetime.utcnow().timestamp())}:R>)"
             for i, p in enumerate(session["participants"])
         ]
         empty = [f"{i+1}. [empty]" for i in range(len(session["participants"]), session["slots"])]
