@@ -25,7 +25,7 @@ class Whens(commands.Cog):
             ),
             color=discord.Color.green()
         )
-        embed.set_footer(text="Session expires in 1 hour.")
+        embed.set_footer(text=f"Session expires <t:{expiry_unix}:R>")
 
         msg = await ctx.send(embed=embed)
         await msg.add_reaction("✅")
