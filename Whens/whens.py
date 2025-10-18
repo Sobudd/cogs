@@ -113,6 +113,16 @@ class Whens(commands.Cog):
 
             channel = self.bot.get_channel(session["channel"])
             if channel:
+                try:
+                    original = await channel.fetch_message(msg.id)
+                    if original.embeds:
+                        embed = original.embeds[0].copy()
+                        embed.color = discord.Color.red()
+                        embed.title = "❌ Session Cancelled"
+                        embed.description += f"\n\n⚠️ Cancelled by {user.display_name}."
+                        await original.edit(embed=embed)
+                except Exception:
+                    pass
                 await channel.send("❌ Session cancelled by the creator.")
             self.active_sessions.pop(msg.id, None)
 
@@ -127,11 +137,20 @@ class Whens(commands.Cog):
         if delay > 0:
             await asyncio.sleep(delay)
 
-        # after waiting, check if still active
         session = self.active_sessions.get(message_id)
         if session:
             channel = self.bot.get_channel(session["channel"])
             if channel:
+                try:
+                    original = await channel.fetch_message(message_id)
+                    if original.embeds:
+                        embed = original.embeds[0].copy()
+                        embed.color = discord.Color.red()
+                        embed.title = "⏰ Session Expired"
+                        embed.description += "\n\n⚠️ This session has expired."
+                        await original.edit(embed=embed)
+                except Exception:
+                    pass
                 await channel.send("⏰ Session expired — not enough players checked in.")
             self.active_sessions.pop(message_id, None)
 
