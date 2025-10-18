@@ -113,6 +113,18 @@ class Whens(commands.Cog):
 
             await msg.edit(embed=embed)
 
+            # 🔥 NEW: check if session is full
+            if len(session["participants"]) >= session["slots"]:
+                channel = self.bot.get_channel(session["channel"])
+                if channel:
+                    mentions = " ".join(f"<@{u.id}>" for u, _ in session["participants"])
+                    await channel.send(
+                        f"✅ Session ready! All {session['slots']} players have checked in for "
+                        f"{session['game'] or 'the game'}.\n{mentions}"
+                    )
+                # remove from active sessions so expiry task won’t fire
+                self.active_sessions.pop(msg.id, None)
+
         # ❌ cancel logic
         elif str(reaction.emoji) == "❌":
             if user.id != session["owner"]:
