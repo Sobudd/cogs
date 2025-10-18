@@ -1,4 +1,4 @@
-from .whens import whens
+from .whens import Whens
 
 async def setup(bot):
-    await bot.add_cog(whens(bot))
+    await bot.add_cog(Whens(bot))
