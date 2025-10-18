@@ -50,7 +50,7 @@ class Whens(commands.Cog):
         # store session info
         self.active_sessions[msg.id] = {
             "slots": slots,
-            "participants": [],
+            "participants": [],  # list of (user, join_timestamp)
             "expires": expires,
             "channel": ctx.channel.id,
             "owner": ctx.author.id
@@ -73,17 +73,18 @@ class Whens(commands.Cog):
 
         # ✅ join logic
         if str(reaction.emoji) == "✅":
-            if user in session["participants"]:
+            # prevent duplicates
+            if any(u.id == user.id for u, _ in session["participants"]):
                 return
             if len(session["participants"]) >= session["slots"]:
                 return
 
-            session["participants"].append(user)
+            # store user + join time
+            session["participants"].append((user, unix_now()))
 
-            ts = unix_now()
             filled = [
                 f"{i+1}. {p.display_name} (<t:{ts}:R>)"
-                for i, p in enumerate(session["participants"])
+                for i, (p, ts) in enumerate(session["participants"])
             ]
             empty = [f"{i+1}. [empty]" for i in range(len(session["participants"]), session["slots"])]
 
