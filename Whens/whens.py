@@ -1,7 +1,12 @@
 import discord
 from redbot.core import commands
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import asyncio
+
+
+def unix_now() -> int:
+    """Return current UTC time as a UNIX timestamp (seconds)."""
+    return int(datetime.now(timezone.utc).timestamp())
 
 
 class Whens(commands.Cog):
@@ -19,31 +24,36 @@ class Whens(commands.Cog):
             return await ctx.send("Slots must be at least 1.")
 
         # calculate expiry time and unix timestamp
-        expires = datetime.utcnow() + timedelta(hours=1)
+        expires = datetime.now(timezone.utc) + timedelta(hours=1)
         expiry_unix = int(expires.timestamp())
 
-        # build embed
+        # build embed description with expiry line
+        desc = (
+            "Please check in for gaming!\n"
+            "React to this message to consent to gaming!\n\n"
+            f"Slots available: {slots}\n\n"
+            + "\n".join([f"{i+1}. [empty]" for i in range(slots)])
+            + f"\n\n⏰ Session expires <t:{expiry_unix}:R>\n"
+            "❌ Session creator can cancel with the ❌ reaction."
+        )
+
         embed = discord.Embed(
             title="🎮 whens has been called!!",
-            description=(
-                "Please check in for gaming!\n"
-                "React to this message to consent to gaming!\n\n"
-                f"Slots available: {slots}\n\n"
-                + "\n".join([f"{i+1}. [empty]" for i in range(slots)])
-            ),
+            description=desc,
             color=discord.Color.green()
         )
-        embed.set_footer(text=f"Session expires <t:{expiry_unix}:R>")
 
         msg = await ctx.send(embed=embed)
         await msg.add_reaction("✅")
+        await msg.add_reaction("❌")
 
         # store session info
         self.active_sessions[msg.id] = {
             "slots": slots,
             "participants": [],
             "expires": expires,
-            "channel": ctx.channel.id
+            "channel": ctx.channel.id,
+            "owner": ctx.author.id
         }
 
         # schedule expiry task
@@ -51,46 +61,60 @@ class Whens(commands.Cog):
 
     @commands.Cog.listener()
     async def on_reaction_add(self, reaction, user):
-        """Handle ✅ reactions to join a session."""
+        """Handle ✅ reactions to join and ❌ to cancel."""
         if user.bot:
             return
 
         msg = reaction.message
         if msg.id not in self.active_sessions:
             return
-        if str(reaction.emoji) != "✅":
-            return
 
         session = self.active_sessions[msg.id]
-        if user in session["participants"]:
-            return
-        if len(session["participants"]) >= session["slots"]:
-            return
 
-        session["participants"].append(user)
+        # ✅ join logic
+        if str(reaction.emoji) == "✅":
+            if user in session["participants"]:
+                return
+            if len(session["participants"]) >= session["slots"]:
+                return
 
-        # rebuild embed with updated participants
-        timestamp = int(datetime.utcnow().timestamp())
-        filled = [
-            f"{i+1}. {p.display_name} (<t:{timestamp}:R>)"
-            for i, p in enumerate(session["participants"])
-        ]
-        empty = [f"{i+1}. [empty]" for i in range(len(session["participants"]), session["slots"])]
+            session["participants"].append(user)
 
-        embed = discord.Embed(
-            title="🎮 whens has been called!!",
-            description=(
+            ts = unix_now()
+            filled = [
+                f"{i+1}. {p.display_name} (<t:{ts}:R>)"
+                for i, p in enumerate(session["participants"])
+            ]
+            empty = [f"{i+1}. [empty]" for i in range(len(session["participants"]), session["slots"])]
+
+            expiry_unix = int(session["expires"].timestamp())
+
+            desc = (
                 "Please check in for gaming!\n"
                 "React to this message to consent to gaming!\n\n"
                 f"Slots available: {session['slots']}\n\n"
                 + "\n".join(filled + empty)
-            ),
-            color=discord.Color.green()
-        )
-        expiry_unix = int(session["expires"].timestamp())
-        embed.set_footer(text=f"Session expires <t:{expiry_unix}:R>")
+                + f"\n\n⏰ Session expires <t:{expiry_unix}:R>\n"
+                "❌ Session creator can cancel with the ❌ reaction."
+            )
 
-        await msg.edit(embed=embed)
+            embed = discord.Embed(
+                title="🎮 whens has been called!!",
+                description=desc,
+                color=discord.Color.green()
+            )
+
+            await msg.edit(embed=embed)
+
+        # ❌ cancel logic
+        elif str(reaction.emoji) == "❌":
+            if user.id != session["owner"]:
+                return  # only creator can cancel
+
+            channel = self.bot.get_channel(session["channel"])
+            if channel:
+                await channel.send("❌ Session cancelled by the creator.")
+            self.active_sessions.pop(msg.id, None)
 
     async def _expire_session(self, message_id: int):
         """Wait until expiry, then clean up if session still active."""
@@ -98,7 +122,7 @@ class Whens(commands.Cog):
         if not session:
             return
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         delay = (session["expires"] - now).total_seconds()
         if delay > 0:
             await asyncio.sleep(delay)
