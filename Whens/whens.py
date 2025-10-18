@@ -17,7 +17,7 @@ class Whens(commands.Cog):
         # active_sessions maps message_id -> session data
         self.active_sessions = {}
 
-    @commands.command(name="whens")
+    @commands.hybrid_command(name="whens")
     async def whens_command(self, ctx, slots: int, *, game: str = None):
         """Start a whens session with a given number of slots and optional game name."""
         if slots < 1:
@@ -46,6 +46,7 @@ class Whens(commands.Cog):
             color=discord.Color.green()
         )
 
+        # hybrid commands can be invoked via ctx.send or interaction
         msg = await ctx.send(embed=embed)
         await msg.add_reaction("✅")
         await msg.add_reaction("❌")
@@ -113,7 +114,7 @@ class Whens(commands.Cog):
 
             await msg.edit(embed=embed)
 
-            # 🔥 NEW: check if session is full
+            # 🔥 check if session is full
             if len(session["participants"]) >= session["slots"]:
                 channel = self.bot.get_channel(session["channel"])
                 if channel:
